@@ -143,15 +143,15 @@ byte auto_pump_multiplier=0;  //autopump mode, do not set this variable, it is a
 boolean input_processed = true;
 
 
-int start_mode_request = 0;
-int start_mode = 0;
+int start_mode_request = 1;
+int start_mode = 1;
 int num_lit_request = 0;
 int num_lit = 0;
 int starting_light = 0;
-int light_mode = 0;
-int light_mode_request = 0;
+int light_mode = 1;
+int light_mode_request = 1;
 boolean enabled[4];
-
+boolean doubletap[4];
 int red = 5;
 int green = 6;
 int blue = 9;
@@ -176,7 +176,7 @@ int previous_xz_filtered_magnitude =0;
 int previous_xz_angle = 0;
 int previous_xz_filtered_angle = 0;
 
-
+int offset_start;
 boolean accel_enabled = false;
 //tone on 11
 ArduinoNunchuk nunchuk = ArduinoNunchuk();
@@ -222,15 +222,51 @@ void loop() {
     input_processed=false;
   }
 
+  doubletap[0]= false;
+  doubletap[1]= false;
+  doubletap[2]= false;
+  doubletap[3]= false; 
+
+  //double tap output_modes
+  if(zc_doubletap_status == 3){
+    switch (dpad){
+    case DPAD_LEFT:
+      doubletap[0]= true;
+      break;
+    case DPAD_RIGHT:
+      doubletap[1]= true;
+      break;
+    case DPAD_UP:
+      doubletap[2]= true;
+      break;
+    case DPAD_DOWN:
+      doubletap[3]= true;
+      break;
+    case DPAD_UP_LEFT:
+
+      break;
+    case DPAD_DOWN_RIGHT:
+
+      break;
+    case DPAD_UP_RIGHT:
+
+      break;
+    case DPAD_DOWN_LEFT:
+
+      break;
+    }
+
+  }
+
   if (cButtonDelayed  ){
 
     Serial.println("C");
     switch (dpad){
     case DPAD_LEFT:
-      light_mode_request = 0;
+      //light_mode_request = 1;
       num_lit_request = 0;
       num_lit = 0;
-      light_mode = 0;
+      light_mode = 1;
       accel_enabled = true;
       break;
     case DPAD_RIGHT:
@@ -240,13 +276,13 @@ void loop() {
       if( input_processed == false && num_lit_request < 4){
         num_lit_request = num_lit_request +1;
       }
-      
+
       if (accel_enabled == true){
         accel_enabled = false;
         num_lit_request = 1;
         num_lit = 1;
-             light_mode_request = 0;
-        light_mode = 0;
+        light_mode_request = 1;
+        light_mode = 1;
       }
 
 
@@ -259,7 +295,7 @@ void loop() {
       if (accel_enabled == true){
         accel_enabled = false;
         light_mode_request = 0;
-        light_mode = 0;
+        light_mode =0;
       }
 
       break;
@@ -338,7 +374,7 @@ void loop() {
   output[3] = false;
 
   for (int i = 0; i < 4; i++){
-    int calculated_led = (starting_light+ i) % 4  ;
+    int calculated_led = (starting_light+ i + offset_start) % 4  ;
 
     if ((calculated_led == 0) && (enabled[i] == true)){
       output[0]= true;
@@ -357,28 +393,45 @@ void loop() {
     }
   }
 
+  if (doubletap[0] == true){
 
-  if (output[0] || (spin[0] && accel_enabled)){
+    analogWrite(red, 0);
+  }
+  else   if (output[0] || (spin[0] && accel_enabled)){
     analogWrite(red, ytilt);
   }
   else{
     analogWrite(red, 255);
   }
 
-  if (output[1] || (spin[1]&& accel_enabled)){
+  if (doubletap[1] == true){
+
+    analogWrite(blue, 0);
+  }
+  else    if (output[1] || (spin[1]&& accel_enabled)){
     analogWrite(blue, ytilt);
   }
   else{
     analogWrite(blue, 255);
   }
-  if (output[2] || (spin[2]&& accel_enabled)){
+
+
+  if (doubletap[2] == true){
+
+    analogWrite(yellow, 0);
+  }
+  else if (output[2] || (spin[2]&& accel_enabled)){
     analogWrite(yellow, ytilt);
   }
   else{
     analogWrite(yellow, 255);
   }
 
-  if (output[3] || (spin[3]&& accel_enabled)){
+  if (doubletap[3] == true){
+
+    analogWrite(green, 0);
+  }
+  else   if (output[3] || (spin[3]&& accel_enabled)){
     analogWrite(green, ytilt);
   }
   else{
@@ -589,7 +642,7 @@ void nunchuckparse(){
           auto_pump_mode=1;
           auto_pump_multiplier = 0;
         }
-       if (num_lit == 7){
+        if (num_lit == 0){
           auto_pump_mode=0;
           auto_pump = false;
         }
@@ -741,8 +794,8 @@ void nunchuckparse(){
       Serial.println(num_lit);
       Serial.println(light_mode);
       Serial.println(starting_light);
-      
-      
+
+
       ytilt_one_way_timer = millis();
     }
     beat_completed = true;
@@ -751,6 +804,8 @@ void nunchuckparse(){
   ytilt_one_way = min(ytilt_one_way,ytilt);  
 
 }
+
+
 
 
 
